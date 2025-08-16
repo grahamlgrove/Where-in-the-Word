@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Where in the Bible?</title>
+<style>
+  :root{
+    --bg:#0f1021; --panel:#17183b; --accent:#e43f5a; --accent2:#1b998b;
+    --text:#f7f7ff; --muted:#cfd2ff; --chip:#273469; --chipText:#e7e9ff;
+    --sel1:#ffd166; --sel2:#06d6a0;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%; overscroll-behavior-x:none}
+  body{
+    margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text); background:linear-gradient(135deg,#0f1021 0%,#1a1b41 100%);
+    display:flex; flex-direction:column; overflow-x:hidden;
+  }
+  header{padding:16px 20px; text-align:center}
+  header h1{margin:0; font-size:clamp(22px,4vw,36px)}
+  main{flex:1; display:flex; justify-content:center; padding:10px; touch-action:pan-y}
+  .card{
+    width:min(1000px,100%); background:rgba(23,24,59,.75); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  .row{display:flex; gap:12px; flex-wrap:wrap}
+  .section{padding:12px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); margin-bottom:12px}
+  .section h3{margin:0 0 10px; font-size:16px; color:var(--muted)}
+  .btn{
+    appearance:none; border:none; border-radius:10px; padding:10px 14px; cursor:pointer;
+    background:var(--chip); color:var(--chipText); font-weight:600; transition:transform .05s, filter .2s, box-shadow .2s;
+  }
+  .btn:hover{filter:brightness(1.07)}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:linear-gradient(135deg,var(--accent) 0%,#ff6b6b 100%); color:white}
+  .btn.secondary{background:linear-gradient(135deg,var(--accent2) 0%,#34d1bf 100%); color:#061a14}
+  .btn.small{padding:6px 8px; font-size:13px; border-radius:8px}
+  .btn.disabled{opacity:.45; pointer-events:none}
+  .btn.selected{box-shadow:0 0 0 2px rgba(255,255,255,.25), 0 0 0 4px rgba(255,255,255,.12)}
+  .btn.selected.level-1{background:linear-gradient(135deg,var(--sel1), #ffe29a); color:#371b00}
+  .btn.selected.level-2{background:linear-gradient(135deg,var(--sel2), #8df3d7); color:#00332a}
+  .books{display:grid; grid-template-columns:repeat(auto-fit, minmax(92px,1fr)); gap:6px}
+  .label{font-size:13px; opacity:.8}
+  .pill{padding:4px 8px; border-radius:999px; background:rgba(255,255,255,.08); font-size:12px; display:inline-block}
+  .verseBox{
+    background:linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    border-radius:12px; padding:14px; font-size:18px; line-height:1.55; border:1px solid rgba(255,255,255,.08);
+  }
+  .verseBox strong{font-weight:800}
+  .transNote{font-size:12px; opacity:.8; margin-top:6px}
+  .clues{display:flex; gap:8px; flex-wrap:wrap}
+  .clueCost{font-size:12px; opacity:.85; margin-left:6px}
+  .stickySubmit{
+    position:sticky; bottom:0; background:linear-gradient(180deg, rgba(23,24,59,.2), rgba(23,24,59,.85));
+    padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.08); display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between
+  }
+  .timerScore{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  .meter{height:8px; border-radius:6px; background:rgba(255,255,255,.1); overflow:hidden; width:160px}
+  .meter>div{height:8px; background:linear-gradient(90deg,#00d2ff,#3a7bd5); width:100%}
+  .value{font-variant-numeric:tabular-nums}
+  .subtitle{opacity:.85}
+  .hidden{display:none !important}
+  .result{padding:16px; border-radius:12px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08)}
+  .praise{font-weight:700}
+  .grid2{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px}
+
+  /* Floating sound control */
+  .soundCtrl{
+    position:fixed; top:8px; right:8px; z-index:1000;
+    background:rgba(23,24,59,.85); border:1px solid rgba(255,255,255,.12);
+    border-radius:10px; padding:6px 8px; display:flex; gap:8px; align-items:center;
+    box-shadow:0 6px 20px rgba(0,0,0,.35); backdrop-filter: blur(6px);
+  }
+  .soundCtrl label{font-size:12px; opacity:.85}
+  .soundCtrl select{
+    appearance:none; background:rgba(255,255,255,.06); color:var(--text);
+    border:1px solid rgba(255,255,255,.15); padding:6px 8px; border-radius:8px;
+    font-size:12px;
+  }
+
+  /* Sliders */
+  .rangeRow{display:flex; align-items:center; gap:10px; position:relative}
+  input[type="range"]{
+    width:100%; height:36px; background:transparent;
+    touch-action: pan-y; -webkit-tap-highlight-color:transparent;
+  }
+  input[type="range"].dragging{ filter:brightness(1.15) }
+  input[type="range"]::-webkit-slider-runnable-track{
+    height:12px; background:rgba(255,255,255,.15); border-radius:999px; border:1px solid rgba(255,255,255,.2);
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:32px; height:32px; border-radius:50%;
+    background:linear-gradient(135deg, var(--accent2), #66ffe0);
+    margin-top:-10px; border:2px solid rgba(0,0,0,.25); box-shadow:0 2px 6px rgba(0,0,0,.4);
+  }
+  input[type="range"]::-moz-range-track{
+    height:12px; background:rgba(255,255,255,.15); border-radius:999px; border:1px solid rgba(255,255,255,.2);
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:32px; height:32px; border-radius:50%;
+    background:linear-gradient(135deg, var(--accent2), #66ffe0);
+    border:2px solid rgba(0,0,0,.25); box-shadow:0 2px 6px rgba(0,0,0,.4);
+  }
+  .rangeVal{min-width:44px; text-align:right; font-variant-numeric:tabular-nums}
+  .bubble{
+    position:absolute; top:-36px; transform:translateX(-50%);
+    padding:4px 8px; border-radius:6px; background:rgba(0,0,0,.6); color:#fff; font-size:12px;
+    pointer-events:none; opacity:0; transition:opacity .12s ease;
+  }
+  .bubble.show{ opacity:1 }
+</style>
+</head>
+<body>
+  <!-- Floating sound control -->
+  <div class="soundCtrl">
+    <label for="soundModeSelect">Sound</label>
+    <select id="soundModeSelect">
+      <option value="none">No sound</option>
+      <option value="classical">Classical</option>
+      <option value="game">Game</option>
+    </select>
+  </div>
+
+  <header>
+    <h1>Where in the Bible?</h1>
+    <div class="subtitle">Guess the verse location. One guess and play again!</div>
+  </header>
+
+  <main>
+    <div class="card" id="app">
+      <!-- START SCREEN -->
+      <div id="startScreen" class="section">
+        <h3>Choose your translation</h3>
+        <div class="chips" id="transChips"></div>
+
+        <div class="section" style="margin-top:10px">
+          <h3>Sound Mode</h3>
+          <div class="chips" id="soundModeChips"></div>
+          <!-- <div class="muted" style="margin-top:6px">Add numbered MP3s under <code>/classical/</code> or <code>/game/</code> (e.g., <code>1.mp3</code>, <code>2.mp3</code>, …). The game will pick one at random.</div> --!>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <button id="startBtn" class="btn primary disabled">Start</button>
+        </div>
+      </div>
+
+      <!-- GAME SCREEN -->
+      <div id="gameScreen" class="hidden">
+        <div class="section">
+          <div class="grid2">
+            <div>
+              <h3>Verse</h3>
+              <div id="verseBox" class="verseBox">Loading verse…</div>
+              <div id="otherTranslations" class="transNote hidden"></div>
+            </div>
+            <div>
+              <h3>Clues</h3>
+              <div class="clues">
+                <button class="btn small secondary" id="clue5050">50/50 <span class="clueCost">−4000</span></button>
+                <button class="btn small" id="clueSurrounding">Surrounding verses <span class="clueCost">−50</span></button>
+                <button class="btn small" id="clueOther">Other translations <span class="clueCost">free</span></button>
+              </div>
+              <div class="muted" style="margin-top:8px">Where is this found?</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Choose location</h3>
+          <div class="chips">
+            <button class="btn" id="btnOT">Old Testament</button>
+            <button class="btn" id="btnNT">New Testament</button>
+          </div>
+
+          <div id="categorySection" class="hidden" style="margin-top:10px">
+            <div class="label">Pick a category</div>
+            <div id="categoryChips" class="chips"></div>
+          </div>
+
+          <div id="bookSection" class="hidden" style="margin-top:10px">
+            <div class="label">Pick a book</div>
+            <div id="bookGrid" class="books"></div>
+          </div>
+
+          <div id="chapterSection" class="hidden" style="margin-top:10px">
+            <div class="label">Pick a chapter</div>
+            <div class="rangeRow">
+              <input type="range" id="chapterRange" min="1" max="1" value="1" step="1" />
+              <div class="bubble" id="chapterBubble">1</div>
+              <div class="rangeVal"><span id="chapterVal">1</span></div>
+            </div>
+          </div>
+
+          <div id="verseSection" class="hidden" style="margin-top:10px">
+            <div class="label">Pick a verse</div>
+            <div class="rangeRow">
+              <input type="range" id="verseRange" min="1" max="1" value="1" step="1" />
+              <div class="bubble" id="verseBubble">1</div>
+              <div class="rangeVal"><span id="verseVal">1</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stickySubmit">
+          <div class="timerScore">
+            <div class="pill">Score: <span id="score" class="value">100.0%</span></div>
+            <div class="pill">Time: <span id="time" class="value">120</span>s</div>
+            <div class="meter"><div id="timeBar"></div></div>
+          </div>
+          <div class="row">
+            <button class="btn ghost" id="giveUpBtn">Give up</button>
+            <button class="btn primary" id="submitBtn" disabled>Submit guess</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESULT -->
+      <div id="resultScreen" class="hidden section">
+        <h3>Result</h3>
+        <div class="result" id="resultBox"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn secondary" id="playAgainBtn">Play again</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <audio id="bgm" preload="auto" loop playsinline></audio>
+
+<script>
+/*** ====== CONFIG ====== ***/
+const TRANSLATIONS = [
+  { key:'NIV', label:'NIV', file:'NIV.xml' },
+  { key:'ESV', label:'ESV', file:'esv.xml' },
+  { key:'NLT', label:'NLT', file:'NLT.xml' },
+];
+const BIBLE_PATHS = ['', 'bibles/', 'data/', 'assets/bibles/', 'assets/'];
+
+// Scoring
+const MAX_SCORE = 10000;
+const TOTAL_TIME = 120;
+const TIME_GRACE = 10;
+const TIME_COST = 30;
+const COSTS = { clue5050:4000, surrounding:50, otherTranslations:0 };
+
+// Audio folders (relative to index.html)
+const BGM_CLASSICAL_DIR = 'classical';
+const BGM_GAME_DIR      = 'game';
+const SFX_WIN_DIR       = 'sfx/win';   // change to 'win' if needed
+const SFX_LOSE_DIR      = 'sfx/lose';
+
+// Numbered-file scanner
+const MUSIC_PROBE_MAX = 100;
+const SFX_EXTS = ['mp3','ogg','wav'];
+const SFX_MAX_MS = 6000;
+
+/*** Canonical categories & books ***/
+const BOOKS = {
+  OT: {
+    "Pentateuch": ["Genesis","Exodus","Leviticus","Numbers","Deuteronomy"],
+    "Histories": ["Joshua","Judges","Ruth","1 Samuel","2 Samuel","1 Kings","2 Kings","1 Chronicles","2 Chronicles","Ezra","Nehemiah","Esther"],
+    "Poetry & Wisdom": ["Job","Psalms","Proverbs","Ecclesiastes","Song of Songs"],
+    "Major Prophets": ["Isaiah","Jeremiah","Lamentations","Ezekiel","Daniel"],
+    "Minor Prophets": ["Hosea","Joel","Amos","Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah","Haggai","Zechariah","Malachi"]
+  },
+  NT: {
+    "Gospels": ["Matthew","Mark","Luke","John"],
+    "Acts": ["Acts"],
+    "Pauline Epistles": ["Romans","1 Corinthians","2 Corinthians","Galatians","Ephesians","Philippians","Colossians","1 Thessalonians","2 Thessalonians","1 Timothy","2 Timothy","Titus","Philemon"],
+    "Non-Pauline Epistles": ["Hebrews","James","1 Peter","2 Peter","1 John","2 John","3 John","Jude"],
+    "Revelation": ["Revelation"]
+  }
+};
+
+const BOOK_ALIASES = {
+  "Song of Solomon":"Song of Songs",
+  "Canticles":"Song of Songs",
+  "Psalm":"Psalms","Ps":"Psalms","Psa":"Psalms","Psal":"Psalms"
+};
+
+const state = {
+  translations:{},
+  chosenTrans:null,
+  target:{ book:null, chapter:0, verse:0, testament:null, category:null },
+  guess:{ testament:null, category:null, book:null, chapter:null, verse:null, locked:false },
+  timeLeft: TOTAL_TIME,
+  penalties:{ clues:0, structure:0 },
+  used:{ clue5050:false, surrounding:false, other:false },
+  timerId:null,
+  audioReady:false,
+  soundMode: (localStorage.getItem('soundMode') || 'game'), // 'none'|'classical'|'game'
+  restarting:false
+};
+
+/*** ====== AUDIO ====== ***/
+const audio = {
+  ctx:null, gain:null, bgEl:null, duckTimer:null,
+  activeSFX: [],
+  tracks:{},
+  sfxGen:0,          // cancellation token
+  sfxMuted:false,    // hard gate to block SFX during restarts
+
+  init(){
+    if (this.ctx) return;
+    try{
+      this.ctx = new (window.AudioContext||window.webkitAudioContext)();
+      this.gain = this.ctx.createGain();
+      this.gain.gain.value = 1;
+      this.gain.connect(this.ctx.destination);
+    }catch{}
+    this.bgEl = document.getElementById('bgm');
+    if (this.bgEl) this.bgEl.volume = 0;
+    state.audioReady = true;
+  },
+
+  async preloadBGM(){
+    await Promise.all([
+      this.scanNumbered(BGM_CLASSICAL_DIR).catch(()=>[]),
+      this.scanNumbered(BGM_GAME_DIR).catch(()=>[])
+    ]);
+  },
+
+  async scanNumbered(folder){
+    if (this.tracks[folder]) return this.tracks[folder];
+    const found = [];
+    for (let i=1;i<=MUSIC_PROBE_MAX;i++){
+      let okUrl = null;
+      for (const ext of SFX_EXTS){
+        const url = `${folder}/${i}.${ext}`;
+        try{
+          const res = await fetch(url, { method:'HEAD' });
+          if (res.ok){ okUrl = url; break; }
+          if (res.status===405){
+            const res2 = await fetch(url);
+            if (res2.ok){ okUrl = url; break; }
+          }
+        }catch{}
+      }
+      if (okUrl) found.push(okUrl);
+    }
+    this.tracks[folder] = found;
+    return found;
+  },
+
+  chooseRandom(list){ return (!list||!list.length) ? null : list[Math.floor(Math.random()*list.length)]; },
+
+  quickStartBG(){
+    if (state.soundMode==='none') return;
+    const folder = state.soundMode==='classical' ? BGM_CLASSICAL_DIR : BGM_GAME_DIR;
+    const list = this.tracks[folder] || [];
+    const pick = this.chooseRandom(list);
+    if (!pick || !this.bgEl) {
+      this.scanNumbered(folder).then(ls=>{
+        if (!this.bgEl) return;
+        if (!this.bgEl.src && state.soundMode!=='none' && isGameVisible()){
+          const laterPick = this.chooseRandom(ls);
+          if (laterPick){
+            this.bgEl.src = laterPick;
+            this.bgEl.currentTime = 0;
+            this.bgEl.play().catch(()=>{});
+            this.fade(this.bgEl, this.bgEl.volume, 0.22, 600);
+          }
+        }
+      });
+      return;
+    }
+    try{
+      this.ctx?.resume?.();
+      this.bgEl.src = pick;
+      this.bgEl.currentTime = 0;
+      this.bgEl.play().catch(()=>{});
+      this.fade(this.bgEl, this.bgEl.volume, 0.22, 600);
+    }catch(e){ console.warn('[audio] quickStartBG error', e); }
+  },
+
+  async startBG(){
+    if (state.soundMode==='none' || !isGameVisible()) return;
+    const folder = state.soundMode==='classical' ? BGM_CLASSICAL_DIR : BGM_GAME_DIR;
+    const list = await this.scanNumbered(folder);
+    const pick = this.chooseRandom(list);
+    if (!pick || !this.bgEl) return;
+    try{
+      await this.ctx?.resume?.();
+      this.bgEl.src = pick;
+      this.bgEl.currentTime = 0;
+      await this.bgEl.play();
+      this.fade(this.bgEl, this.bgEl.volume, 0.22, 600);
+    }catch(e){ console.warn('[audio] BGM play blocked', e); }
+  },
+
+  fade(el, from, to, ms, done){
+    const start = performance.now();
+    const step = (t)=>{
+      const p = Math.min(1, (t-start)/ms);
+      el.volume = from + (to-from)*p;
+      if (p<1) requestAnimationFrame(step); else if (done) done();
+    };
+    requestAnimationFrame(step);
+  },
+
+  stopBG(immediate=false, fadeMs=300){
+    const el = this.bgEl; if (!el) return;
+    if (immediate){
+      try{ el.pause(); }catch{}
+      el.volume = 0;
+      el.src = ''; el.load();
+      return;
+    }
+    this.fade(el, el.volume, 0, fadeMs, ()=>{
+      try{ el.pause(); }catch{}
+      el.src = ''; el.load();
+    });
+  },
+
+  stopSFX(fadeMs=0){
+    const fades = [];
+    for (const el of this.activeSFX){
+      try{
+        if (el._sfxTimer) { clearTimeout(el._sfxTimer); el._sfxTimer = null; }
+        // Hard mute immediately to avoid any audible blip
+        el.muted = true;
+        if (fadeMs > 0){
+          fades.push(new Promise(resolve=>{
+            const from = el.volume ?? 1;
+            const done = ()=>{
+              try{ el.pause(); el.currentTime = 0; el.src = ''; el.load(); el.remove?.(); }catch{}
+              resolve();
+            };
+            this.fade(el, from, 0, fadeMs, done);
+          }));
+        }else{
+          el.pause(); el.currentTime = 0; el.src = ''; el.load(); el.remove?.();
+        }
+      }catch{}
+    }
+    this.activeSFX = [];
+    return Promise.all(fades);
+  },
+
+  async stopAll(fadeMs=0){
+    try{
+      const bgDone = new Promise(resolve=>{
+        this.stopBG(false, fadeMs);
+        setTimeout(resolve, Math.max(0, fadeMs + 10));
+      });
+      await Promise.all([ bgDone, this.stopSFX(fadeMs) ]);
+    }catch(e){
+      this.hardKill();
+    }
+  },
+
+  hardKill(){
+    try{
+      this.bgEl?.pause?.();
+      if (this.bgEl){ this.bgEl.volume = 0; this.bgEl.src=''; this.bgEl.load(); }
+      for (const el of this.activeSFX){ try{ el.pause(); el.currentTime=0; el.src=''; el.load(); el.remove?.(); }catch{} }
+      this.activeSFX = [];
+    }catch{}
+  },
+
+  cancelPendingSFX(){ this.sfxGen++; },
+
+  async playSFX(kind){
+    if (state.soundMode === 'none' || this.sfxMuted) return;
+    const myGen = this.sfxGen;
+    const folder = (kind === 'win') ? SFX_WIN_DIR : SFX_LOSE_DIR;
+    const list = await this.scanNumbered(folder);
+    if (myGen !== this.sfxGen || this.sfxMuted) { return; }
+    const pick = this.chooseRandom(list);
+    if (!pick) { console.warn(`[audio] No ${kind.toUpperCase()} SFX found in "${folder}/"`); return; }
+    if (myGen !== this.sfxGen || this.sfxMuted) { return; }
+    try{
+      const el = new Audio(pick);
+      el.preload = 'auto'; el.loop = false; el.volume = 1.0;
+      this._trackSFX(el);
+      // Safety: hard-stop any unusually long file after SFX_MAX_MS
+      el._sfxTimer = setTimeout(()=>{
+        this.fade(el, el.volume ?? 1, 0, 300, ()=>{
+          try{ el.pause(); el.currentTime = 0; el.src = ''; el.load(); el.remove?.(); }catch{}
+          this._pruneSFX(el);
+        });
+      }, SFX_MAX_MS);
+      await el.play().catch(()=>{});
+    }catch(e){ console.warn(`[audio] Failed to play ${kind} SFX`, e); }
+  },
+
+  _trackSFX(el){
+    this.activeSFX.push(el);
+    const drop = ()=> this._pruneSFX(el);
+    el.addEventListener('ended', drop, {once:true});
+    el.addEventListener('error', drop, {once:true});
+  },
+  _pruneSFX(el){
+    const i = this.activeSFX.indexOf(el);
+    if (i >= 0) this.activeSFX.splice(i, 1);
+  }
+};
+
+/*** ====== UTILS ====== ***/
+function $(id){ return document.getElementById(id); }
+function haptic(ms=8){ try{ if (navigator.vibrate) navigator.vibrate(ms); }catch{} }
+function prettyRef(book,ch,vs){ return `${book} ${ch}:${vs}`; }
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+function isOT(book){ for (const arr of Object.values(BOOKS.OT)) if (arr.includes(book)) return true; return false; }
+function findCategory(testament, book){ const map = testament==='OT'?BOOKS.OT:BOOKS.NT; for (const [cat, arr] of Object.entries(map)){ if (arr.includes(book)) return cat; } return null; }
+function norm(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+function displayName(bookKey){ if (!bookKey) return bookKey; if (bookKey==="Song of Solomon") return "Song of Songs"; if (bookKey==="Psalm") return "Psalms"; return bookKey; }
+function pickKey(data, displayBook){
+  if (data[displayBook]) return displayBook;
+  const alias = BOOK_ALIASES[displayBook];
+  if (alias && data[alias]) return alias;
+  const target = norm(alias || displayBook);
+  const cand = Object.keys(data).find(k => norm(k)===target);
+  return cand || displayBook;
+}
+function getChaptersCount(transKey, displayBook){
+  const data = state.translations[transKey]?.data || {};
+  const key = pickKey(data, displayBook);
+  const arr = data[key];
+  return Array.isArray(arr) && arr.length>0 ? arr.length : 1;
+}
+function getVersesCount(transKey, displayBook, chapter){
+  const data = state.translations[transKey]?.data || {};
+  const key = pickKey(data, displayBook);
+  const arr = data[key];
+  if (!Array.isArray(arr) || !arr[chapter-1]) return 1;
+  const vs = arr[chapter-1];
+  return Array.isArray(vs) && vs.length>0 ? vs.length : 1;
+}
+function getVerseText(transKey, displayBook, ch, vs){
+  const data = state.translations[transKey]?.data || {};
+  const key = pickKey(data, displayBook);
+  const arr = data[key];
+  return (arr && arr[ch-1] && arr[ch-1][vs-1]) ? arr[ch-1][vs-1] : '';
+}
+function elapsedSeconds(){ return TOTAL_TIME - state.timeLeft; }
+function timePenalty(){ const over = Math.max(0, elapsedSeconds() - TIME_GRACE); return over * TIME_COST; }
+function currentBaseScore(){ return Math.max(0, MAX_SCORE - state.penalties.clues - timePenalty()); }
+function percentFromScore(score){ if (score >= MAX_SCORE) return '100.0%'; const floored = Math.floor((score * 1000) / MAX_SCORE) / 10; return floored.toFixed(1) + '%'; }
+function isGameVisible(){ return !document.getElementById('gameScreen').classList.contains('hidden'); }
+function withTimeout(promise, ms){
+  return new Promise((resolve,reject)=>{
+    const t = setTimeout(()=>reject(new Error('timeout')), ms);
+    promise.then(v=>{clearTimeout(t); resolve(v);}, e=>{clearTimeout(t); reject(e);});
+  });
+}
+
+/*** ====== LOADERS ====== ***/
+async function tryFetchAny(pathList, file){
+  for (const base of pathList){
+    try{
+      const resp = await fetch(base + file);
+      if (resp.ok){ return { ok:true, text:await resp.text(), base}; }
+    }catch{}
+  }
+  return { ok:false };
+}
+function parseBibleXML(xmlText){
+  const dom = new DOMParser().parseFromString(xmlText, "application/xml");
+  const result = {};
+  const ensure = (book,ch)=>{ if(!result[book]) result[book]=[]; while(result[book].length<ch) result[book].push([]); };
+
+  // NIV compact schema
+  const bNodes = dom.getElementsByTagName("b");
+  if (bNodes && bNodes.length){
+    for (const b of bNodes){
+      let book = b.getAttribute("n") || b.getAttribute("name") || "Unknown";
+      if (BOOK_ALIASES[book]) book = BOOK_ALIASES[book];
+      const cNodes = b.getElementsByTagName("c");
+      for (const c of cNodes){
+        const ch = parseInt(c.getAttribute("n") || c.getAttribute("number") || "1", 10);
+        if (!Number.isFinite(ch)) continue;
+        ensure(book, ch);
+        const vNodes = c.getElementsByTagName("v");
+        for (const v of vNodes){
+          const vn = parseInt(v.getAttribute("n") || v.getAttribute("number") || "1", 10);
+          if (!Number.isFinite(vn)) continue;
+          result[book][ch-1][vn-1] = (v.textContent || "").trim();
+        }
+      }
+    }
+    if (Object.keys(result).length) return result;
+  }
+
+  // Zefania schema
+  const zBooks = dom.getElementsByTagName("BIBLEBOOK");
+  if (zBooks && zBooks.length){
+    for (const b of zBooks){
+      let book = b.getAttribute("bname") || "Unknown";
+      if (BOOK_ALIASES[book]) book = BOOK_ALIASES[book];
+      const cNodes = b.getElementsByTagName("CHAPTER");
+      for (const c of cNodes){
+        const ch = parseInt(c.getAttribute("cnumber") || "1", 10);
+        if (!Number.isFinite(ch)) continue;
+        ensure(book, ch);
+        const vNodes = c.getElementsByTagName("VERS");
+        for (const v of vNodes){
+          const vn = parseInt(v.getAttribute("vnumber") || "1", 10);
+          if (!Number.isFinite(vn)) continue;
+          result[book][ch-1][vn-1] = (v.textContent || "").trim();
+        }
+      }
+    }
+    return result;
+  }
+
+  // Lowercase generic
+  const bookNodes = dom.getElementsByTagName("book");
+  if (bookNodes && bookNodes.length){
+    for (const b of bookNodes){
+      let book = b.getAttribute("name") || b.getAttribute("n") || "Unknown";
+      if (BOOK_ALIASES[book]) book = BOOK_ALIASES[book];
+      const cNodes = b.getElementsByTagName("chapter");
+      for (const c of cNodes){
+        const ch = parseInt(c.getAttribute("number") || c.getAttribute("n") || "1", 10);
+        if (!Number.isFinite(ch)) continue;
+        ensure(book, ch);
+        const vNodes = c.getElementsByTagName("verse");
+        for (const v of vNodes){
+          const vn = parseInt(v.getAttribute("number") || c.getAttribute("n") || "1", 10);
+          if (!Number.isFinite(vn)) continue;
+          result[book][ch-1][vn-1] = (v.textContent || "").trim();
+        }
+      }
+    }
+    return result;
+  }
+  return result;
+}
+async function loadTranslations(){
+  buildSoundModeChips();
+  const wrap=$('transChips'); wrap.innerHTML='';
+  for(const t of TRANSLATIONS){
+    let info = {available:false, path:null, data:{}};
+    const tried = await tryFetchAny(BIBLE_PATHS, t.file);
+    if (tried.ok){ info.available=true; info.path=tried.base+t.file; info.data=parseBibleXML(tried.text); }
+    state.translations[t.key]=info;
+
+    const btn=document.createElement('button');
+    btn.className='btn'+(info.available?'':' disabled');
+    btn.textContent=t.label + (info.available?'':' (unavailable)');
+    btn.addEventListener('click',()=>{
+      if(!info.available) return;
+      state.chosenTrans = t.key;
+      [...wrap.children].forEach(b=>b.classList.remove('secondary','selected','level-1','level-2'));
+      btn.classList.add('secondary','selected','level-1');
+      $('startBtn').classList.remove('disabled');
+    });
+    wrap.appendChild(btn);
+  }
+}
+
+/*** ====== GAME FLOW ====== ***/
+function startGame(){
+  state.penalties={ clues:0, structure:0 };
+  state.used={clue5050:false, surrounding:false, other:false};
+  state.timeLeft=TOTAL_TIME;
+  state.guess={testament:null, category:null, book:null, chapter:null, verse:null, locked:false};
+
+  const tr = state.translations[state.chosenTrans].data;
+  const books = Object.keys(tr).filter(b=>tr[b]?.length);
+  const bookKey = books[Math.floor(Math.random()*books.length)];
+  const book = displayName(bookKey);
+  const chCount = tr[bookKey].length;
+  const ch = 1 + Math.floor(Math.random()*chCount);
+  const vsCount = tr[bookKey][ch-1].length||1;
+  const vs = 1 + Math.floor(Math.random()*vsCount);
+
+  const testament = isOT(book) ? 'OT' : 'NT';
+  const category = findCategory(testament, book);
+  state.target = { book, chapter:ch, verse:vs, testament, category };
+
+  renderMainVerse();
+
+  ['btnOT','btnNT'].forEach(id=>$(id).classList.remove('disabled','selected','level-1','level-2','level-3'));
+  $('categorySection').classList.add('hidden');
+  $('bookSection').classList.add('hidden');
+  $('chapterSection').classList.add('hidden');
+  $('verseSection').classList.add('hidden');
+  $('submitBtn').disabled = true;
+
+  updateScoreUI();
+  $('time').textContent = state.timeLeft;
+  $('timeBar').style.width='100%';
+  if(state.timerId) clearInterval(state.timerId);
+  state.timerId = setInterval(()=>{
+    if (state.timeLeft<=0){ clearInterval(state.timerId); state.timeLeft=0; $('time').textContent=0; $('timeBar').style.width='0%'; endDueToTimeout(); return; }
+    state.timeLeft--;
+    $('time').textContent=state.timeLeft;
+    $('timeBar').style.width = `${(state.timeLeft / TOTAL_TIME) * 100}%`;
+    updateScoreUI();
+  },1000);
+}
+function updateScoreUI(){ $('score').textContent = percentFromScore(currentBaseScore()); }
+function endDueToTimeout(){ finalizeScoreAndShow(true); }
+function renderMainVerse(){
+  const text = getVerseText(state.chosenTrans, state.target.book, state.target.chapter, state.target.verse);
+  $('verseBox').innerHTML = escapeHTML(text);
+  $('otherTranslations').classList.add('hidden'); $('otherTranslations').innerHTML='';
+}
+
+/*** ====== UI ====== ***/
+function buildSoundModeChips(){
+  const wrap = $('soundModeChips'); wrap.innerHTML='';
+  const opts = [
+    {key:'none', label:'No sound'},
+    {key:'classical', label:'Classical Music'},
+    {key:'game', label:'Game Music'}
+  ];
+  opts.forEach(o=>{
+    const b=document.createElement('button');
+    b.className='btn small';
+    b.textContent=o.label;
+    if (state.soundMode===o.key) b.classList.add('selected','level-1');
+    b.addEventListener('click',()=> setSoundMode(o.key, {userGesture:true, restartIfPlaying:false}));
+    wrap.appendChild(b);
+  });
+  $('soundModeSelect').value = state.soundMode;
+  $('soundModeSelect').addEventListener('change', (e)=> setSoundMode(e.target.value, {userGesture:true, restartIfPlaying:true}));
+}
+function syncSoundUI(){
+  [...$('soundModeChips').children].forEach(btn=>{
+    const label = btn.textContent.toLowerCase();
+    const key = label.includes('no ') ? 'none' : (label.includes('classical')?'classical':'game');
+    btn.classList.toggle('selected', key===state.soundMode);
+    btn.classList.toggle('level-1', key===state.soundMode);
+  });
+  $('soundModeSelect').value = state.soundMode;
+}
+async function setSoundMode(mode, {userGesture=false, restartIfPlaying=true}={}){
+  if (!['none','classical','game'].includes(mode)) return;
+  if (mode === state.soundMode && !restartIfPlaying) return;
+  state.soundMode = mode;
+  localStorage.setItem('soundMode', state.soundMode);
+  syncSoundUI();
+
+  const duringGame = isGameVisible();
+
+  if (mode==='none'){
+    audio.sfxMuted = true;           // block any late SFX
+    audio.cancelPendingSFX();
+    await audio.stopSFX(0);          // cut SFX immediately
+    audio.stopBG(true);              // immediate stop bgm
+    return;
+  }
+
+  if (duringGame){
+    audio.sfxMuted = true;
+    audio.cancelPendingSFX();
+    try{ await withTimeout(audio.stopSFX(0), 800); }catch{}
+    audio.stopBG(true);
+    if (userGesture) audio.quickStartBG(); else audio.startBG();
+    audio.sfxMuted = false;
+  } else {
+    audio.sfxMuted = true;
+    audio.cancelPendingSFX();
+    await audio.stopSFX(0);
+    audio.stopBG(true);
+  }
+}
+
+function setupUI(){
+  $('startBtn').addEventListener('click', ()=>{
+    if ($('startBtn').classList.contains('disabled')) return;
+    if (state.restarting) return;
+    state.restarting = true;
+
+    const btn = $('startBtn');
+    const oldText = btn.textContent;
+    btn.classList.add('disabled'); btn.textContent = 'Starting…';
+
+    if (!state.audioReady) audio.init();
+
+    $('startScreen').classList.add('hidden');
+    $('resultScreen').classList.add('hidden');
+    $('gameScreen').classList.remove('hidden');
+
+    if (state.soundMode!=='none') audio.quickStartBG();
+    startGame();
+
+    btn.textContent = oldText; btn.classList.remove('disabled');
+    state.restarting = false;
+  });
+
+  // Play again — SFX gate + immediate SFX cut + BGM stop
+  $('playAgainBtn').addEventListener('click', async ()=>{
+    if (state.restarting) return;
+    state.restarting = true;
+
+    const btn = $('playAgainBtn');
+    const oldText = btn.textContent;
+    btn.classList.add('disabled'); btn.textContent = 'Starting…';
+
+    try{
+      // Block any late SFX and kill current ones right away
+      audio.sfxMuted = true;
+      audio.cancelPendingSFX();
+      try{ await withTimeout(audio.stopSFX(0), 800); }catch{}  // zero-fade, hard cut
+      audio.stopBG(true); // immediate bgm stop
+
+      $('resultScreen').classList.add('hidden');
+      $('gameScreen').classList.remove('hidden');
+
+      startGame();
+      if (state.soundMode!=='none') audio.startBG();
+    } finally {
+      // Re-open SFX after round begins
+      audio.sfxMuted = false;
+      btn.textContent = oldText; btn.classList.remove('disabled');
+      state.restarting = false;
+    }
+  });
+
+  $('giveUpBtn').addEventListener('click', ()=>{
+    if (state.guess.locked) return;
+    state.guess.locked = true; clearInterval(state.timerId);
+    finalizeScoreAndShow(true);
+  });
+
+  const markSelected = (btn, level='level-1')=>{ btn.classList.add('selected', level); };
+  const clearSiblings = (sel)=>{ [...document.querySelectorAll(sel+' .btn')].forEach(b=> b.classList.remove('selected','level-1','level-2','level-3')); };
+
+  $('btnOT').addEventListener('click', ()=>{
+    if(state.guess.locked) return;
+    state.guess.testament='OT';
+    clearSiblings('#app'); markSelected($('btnOT'),'level-1');
+    showCategories('OT'); haptic();
+  });
+  $('btnNT').addEventListener('click', ()=>{
+    if(state.guess.locked) return;
+    state.guess.testament='NT';
+    clearSiblings('#app'); markSelected($('btnNT'),'level-1');
+    showCategories('NT'); haptic();
+  });
+
+  attachSliderUX({
+    slider: $('chapterRange'),
+    bubble: $('chapterBubble'),
+    onChange: (v)=>{
+      $('chapterVal').textContent = v;
+      if (!state.guess.book) return;
+      const maxV = Math.max(1, getVersesCount(state.chosenTrans, state.guess.book, v));
+      $('verseRange').min = 1; $('verseRange').max = maxV;
+      if (parseInt($('verseRange').value,10) > maxV) $('verseRange').value = maxV, $('verseVal').textContent = String(maxV);
+      $('verseSection').classList.remove('hidden');
+      state.guess.chapter = v;
+      state.guess.verse = parseInt($('verseRange').value,10)||1;
+      maybeEnableSubmit();
+    }
+  });
+  attachSliderUX({
+    slider: $('verseRange'),
+    bubble: $('verseBubble'),
+    onChange: (v)=>{
+      $('verseVal').textContent = v;
+      state.guess.verse = v;
+      maybeEnableSubmit();
+    }
+  });
+
+  $('submitBtn').addEventListener('click', ()=>{
+    if (state.guess.locked) return;
+    state.guess.locked = true; clearInterval(state.timerId);
+    finalizeScoreAndShow(false);
+  });
+
+  // Clues
+  $('clue5050').addEventListener('click', ()=>{
+    if (state.used.clue5050) return; state.used.clue5050=true;
+    const targetT=state.target.testament;
+    if (targetT==='OT') $('btnNT').classList.add('disabled'); else $('btnOT').classList.add('disabled');
+    applyClueCost('clue5050');
+  });
+
+  $('clueSurrounding').addEventListener('click', ()=>{
+    if (state.used.surrounding) return; state.used.surrounding=true;
+    const t=state.chosenTrans, b=state.target.book, c=state.target.chapter, v=state.target.verse;
+    const prev = v>1 ? getVerseText(t,b,c,v-1) : null;
+    const next = getVersesCount(t,b,c)>v ? getVerseText(t,b,c,v+1) : null;
+    const parts=[];
+    if(prev) parts.push(`<span class="muted">${escapeHTML(prev)}</span>`);
+    parts.push(`<strong>${escapeHTML(getVerseText(t,b,c,v))}</strong>`);
+    if(next) parts.push(`<span class="muted">${escapeHTML(next)}</span>`);
+    $('verseBox').innerHTML = parts.join(' ');
+    applyClueCost('surrounding');
+  });
+
+  $('clueOther').addEventListener('click', ()=>{
+    if (state.used.other) return; state.used.other=true;
+    const b=state.target.book, c=state.target.chapter, v=state.target.verse;
+    const lines=[];
+    for (const tr of TRANSLATIONS){
+      if (tr.key===state.chosenTrans) continue;
+      const info=state.translations[tr.key];
+      if (info?.available){
+        const text=getVerseText(tr.key,b,c,v);
+        if (text) lines.push(`<div><em>(${tr.key})</em> ${escapeHTML(text)}</div>`);
+        else lines.push(`<div><em>(${tr.key})</em> unavailable for this verse</div>`);
+      } else lines.push(`<div><em>(${tr.key})</em> not loaded</div>`);
+    }
+    const el=$('otherTranslations'); el.innerHTML=lines.join(''); el.classList.remove('hidden');
+  });
+}
+
+function attachSliderUX({slider, bubble, onChange}){
+  slider.step = '1';
+  const setBubble = ()=>{
+    const min = +slider.min || 0, max = +slider.max || 1, val = +slider.value || min;
+    const pct = (max===min)?0: (val - min) / (max - min);
+    const rect = slider.getBoundingClientRect();
+    bubble.style.left = (rect.left + pct*rect.width - slider.parentElement.getBoundingClientRect().left) + 'px';
+    bubble.textContent = String(val);
+  };
+  const emit = ()=>{ const v = parseInt(slider.value,10) || (+slider.min||1); onChange?.(v); };
+
+  slider.addEventListener('input', ()=>{
+    bubble.classList.add('show'); slider.classList.add('dragging'); setBubble(); haptic(6); emit();
+  });
+
+  let startX = 0, lastX = 0, startVal = 0;
+  const THRESH_PX = 10;
+  const onPointerDown = (e)=>{ slider.setPointerCapture?.(e.pointerId); startX = lastX = e.clientX; startVal = +slider.value; bubble.classList.add('show'); slider.classList.add('dragging'); setBubble(); };
+  const onPointerMove = (e)=>{ lastX = e.clientX; setBubble(); };
+  const onPointerUp = ()=>{
+    const dx = lastX - startX;
+    if (Math.abs(dx) >= THRESH_PX && +slider.value === startVal){
+      const min = +slider.min || 1, max = +slider.max || 1;
+      let v = startVal + (dx>0 ? 1 : -1);
+      v = Math.max(min, Math.min(max, v));
+      if (v !== +slider.value){ slider.value = v; emit(); }
+    }
+    bubble.classList.remove('show'); slider.classList.remove('dragging');
+  };
+  slider.addEventListener('pointerdown', onPointerDown);
+  slider.addEventListener('pointermove', onPointerMove);
+  slider.addEventListener('pointerup', onPointerUp);
+  slider.addEventListener('pointercancel', onPointerUp);
+  slider.addEventListener('pointerleave', onPointerUp);
+  setTimeout(setBubble, 0);
+}
+
+function applyClueCost(type){ state.penalties.clues += (COSTS[type]||0); updateScoreUI(); }
+function showCategories(tst){
+  $('categorySection').classList.remove('hidden');
+  $('bookSection').classList.add('hidden');
+  $('chapterSection').classList.add('hidden');
+  $('verseSection').classList.add('hidden');
+  $('categoryChips').innerHTML = '';
+  const catMap = tst==='OT'?BOOKS.OT:BOOKS.NT;
+  for (const [cat, list] of Object.entries(catMap)){
+    const b=document.createElement('button');
+    b.className='btn small';
+    b.textContent=cat;
+    b.addEventListener('click', ()=>{
+      state.guess.category=cat;
+      [...$('categoryChips').children].forEach(x=>x.classList.remove('selected','level-2'));
+      b.classList.add('selected','level-2');
+      showBooks(tst, cat, list); haptic();
+    });
+    $('categoryChips').appendChild(b);
+  }
+}
+function showBooks(tst, cat, list){
+  $('bookSection').classList.remove('hidden');
+  $('chapterSection').classList.add('hidden');
+  $('verseSection').classList.add('hidden');
+  $('bookGrid').innerHTML='';
+  list.forEach(book=>{
+    const btn=document.createElement('button'); btn.className='btn small'; btn.textContent=book;
+    btn.addEventListener('click', ()=>{
+      state.guess.book=book;
+      [...$('bookGrid').children].forEach(x=>x.classList.remove('selected','level-3'));
+      btn.classList.add('selected','level-3');
+      const maxCh = Math.max(1, getChaptersCount(state.chosenTrans, book));
+      $('chapterRange').min=1; $('chapterRange').max=maxCh; $('chapterRange').value=1; $('chapterVal').textContent='1';
+      $('chapterSection').classList.remove('hidden');
+      const maxV = Math.max(1, getVersesCount(state.chosenTrans, book, 1));
+      $('verseRange').min=1; $('verseRange').max=maxV; $('verseRange').value=1; $('verseVal').textContent='1';
+      $('verseSection').classList.remove('hidden');
+      state.guess.chapter=1; state.guess.verse=1; maybeEnableSubmit(); haptic();
+    });
+    $('bookGrid').appendChild(btn);
+  });
+}
+function maybeEnableSubmit(){
+  const g=state.guess;
+  $('submitBtn').disabled = !(g.testament && g.category && g.book && (g.chapter||1) && (g.verse||1));
+}
+
+/*** ====== SCORING ====== ***/
+function finalizeScoreAndShow(dueToTimeout){
+  if (!state.guess.chapter) state.guess.chapter = 1;
+  if (!state.guess.verse) state.guess.verse = 1;
+
+  // stop BGM immediately; SFX will play over silence on result
+  audio.stopBG(true);
+
+  const g=state.guess, t=state.target;
+  let structuralPenalty = 0;
+  let structuralReason = null;
+
+  if (!g.testament || !g.book){
+    structuralPenalty = 5000; structuralReason = 'you chose the wrong Testament or did not answer';
+  } else if (g.testament !== t.testament){
+    structuralPenalty = 5000; structuralReason = 'you chose the wrong Testament';
+  } else if (g.category !== t.category){
+    structuralPenalty = 4000; structuralReason = 'you chose the wrong section';
+  } else if (g.book !== t.book){
+    structuralPenalty = 3000; structuralReason = 'you chose the wrong book';
+  } else if (g.chapter !== t.chapter){
+    const diff = Math.abs(g.chapter - t.chapter);
+    structuralPenalty = 20 * diff; structuralReason = `your chapter was off by ${diff}`;
+  } else if (g.verse !== t.verse){
+    const diff = Math.abs(g.verse - t.verse);
+    structuralPenalty = 2 * diff; structuralReason = `your verse was off by ${diff}`;
+  }
+
+  state.penalties.structure = structuralPenalty;
+
+  const base = currentBaseScore();
+  let finalScore = Math.max(0, base - structuralPenalty);
+  if (finalScore > MAX_SCORE) finalScore = MAX_SCORE;
+
+  const pctNum = finalScore >= MAX_SCORE ? 100.0 : Math.floor((finalScore * 1000) / MAX_SCORE) / 10;
+  if (state.soundMode!=='none' && !audio.sfxMuted){
+    if (pctNum > 90.0) audio.playSFX('win'); else audio.playSFX('lose');
+  }
+
+  showResult(finalScore, structuralReason, dueToTimeout);
+}
+function showResult(score, structuralReason){
+  const guessStr = state.guess.book ? prettyRef(state.guess.book, state.guess.chapter||1, state.guess.verse||1) : '(no answer)';
+  const actualStr = prettyRef(state.target.book, state.target.chapter, state.target.verse);
+
+  const pctText = percentFromScore(score);
+  const pctNum = score >= MAX_SCORE ? 100.0 : Math.floor((score * 1000) / MAX_SCORE) / 10;
+
+  let praise = '';
+  if (pctNum > 90.0) praise = 'Brilliant score!';
+  else if (pctNum >= 70.0) praise = 'Pretty good.';
+  else if (pctNum >= 50.0) praise = 'Not bad but still a way to go.';
+  else praise = 'Plenty of reading and learning still to do!';
+
+  const reasons = [];
+  const over = Math.max(0, elapsedSeconds() - TIME_GRACE);
+  if (over > 0){ reasons.push(`You lost ${over*TIME_COST} points because you took ${over} second${over===1?'':'s'} after the first 10 seconds.`); }
+  else { reasons.push(`No time penalty was applied for the first 10 seconds.`); }
+  if (state.used.clue5050) reasons.push(`You lost ${COSTS.clue5050} points because you used the 50/50 clue.`);
+  if (state.used.surrounding) reasons.push(`You lost ${COSTS.surrounding} points because you looked at the surrounding verses.`);
+  if (structuralReason && state.penalties.structure>0){ reasons.push(`You lost ${state.penalties.structure} points because ${structuralReason}.`); }
+  if (!state.used.clue5050 && !state.used.surrounding && over===0 && state.penalties.structure===0){ reasons.push('No points were lost. Great job!'); }
+
+  $('gameScreen').classList.add('hidden'); $('resultScreen').classList.remove('hidden');
+  $('resultBox').innerHTML = `
+    <div><strong>Score: ${pctText}</strong></div>
+    <div>Your guess: ${escapeHTML(guessStr)}</div>
+    <div>Actual verse: ${escapeHTML(actualStr)}</div>
+    <div class="praise" style="margin:8px 0 6px 0">${escapeHTML(praise)}</div>
+    <div class="muted">${reasons.map(r=>`<div>${escapeHTML(r)}</div>`).join('')}</div>
+  `;
+}
+
+/*** ====== INIT ====== ***/
+(async function init(){
+  setupUI();
+  await Promise.all([ loadTranslations(), (async ()=>{ audio.init(); await audio.preloadBGM(); })() ]);
+  syncSoundUI();
+})();
+</script>
+</body>
+</html>
